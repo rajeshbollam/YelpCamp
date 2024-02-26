@@ -21,7 +21,7 @@ const mongoSanitize = require("express-mongo-sanitize");
 const userRoutes = require("./routes/users");
 const campgroundRoutes = require("./routes/campgrounds");
 const reviewRoutes = require("./routes/reviews");
-const dbUrl = "mongodb://127.0.0.1:27017/yelp-camp";
+const dbUrl = process.env.DB_URL || "mongodb://127.0.0.1:27017/yelp-camp";
 
 main().catch((err) => {
   console.log("Database connection error!");
@@ -46,13 +46,15 @@ app.set("views", path.join(__dirname, "views"));
 app.use(express.urlencoded({ extended: true })); //to parse the req.body that express sends back but we cannot see it if we don't parse it using this method.
 app.use(methodOverride("_method"));
 app.use(express.static(path.join(__dirname, "public")));
-app.use(mongoSanitize());
+app.use(mongoSanitize({ replaceWith: "_" }));
+
+const secret = process.env.SECRET || "thisshouldbeabettersecret!";
 
 const store = MongoStore.create({
   mongoUrl: dbUrl,
   touchAfter: 24 * 60 * 60,
   crypto: {
-    secret: "thisshouldbeabettersecret",
+    secret, //same as secret:secret
   },
 });
 
@@ -63,7 +65,7 @@ store.on("error", function (e) {
 const sessionConfig = {
   store, //this store variable is coming from MongoStore, instead of single store, we can specify store:store as well
   name: "session",
-  secret: "thisshouldbeabettersecret",
+  secret,
   resave: false,
   saveUninitialized: true,
   cookie: {
@@ -136,12 +138,6 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/fakeUser", async (req, res) => {
-  const user = new User({ email: "rajesh1234@gmail.com", username: "rajjjj" });
-  const newUser = await User.register(user, "chicken_sauces");
-  res.send(newUser);
-});
-
 app.use("/", userRoutes);
 app.use("/campgrounds", campgroundRoutes);
 app.use("/campgrounds/:id/reviews", reviewRoutes);
@@ -150,17 +146,8 @@ app.get("/", (req, res) => {
   res.render("home");
 });
 
-// app.get("/makecampground", async (req, res) => {
-//   const myCamp = new Campground({
-//     title: "My Backyard",
-//     description: "cheap camping!",
-//   });
-//   await myCamp.save();
-//   res.send(myCamp);
-// });
-
 app.all("*", (req, res, next) => {
-  next(new ExpressError("Page Not Found", 400));
+  next(new ExpressError("Page Not Found", 404));
 });
 
 app.use((err, req, res, next) => {
@@ -169,6 +156,8 @@ app.use((err, req, res, next) => {
   res.status(statusCode).render("error", { err });
 });
 
-app.listen(3000, () => {
-  console.log("Serving on port 3000");
+const port = process.env.PORT || 3000;
+
+app.listen(port, () => {
+  console.log(`Serving on port ${port}`);
 });
