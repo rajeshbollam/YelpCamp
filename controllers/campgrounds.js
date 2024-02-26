@@ -31,7 +31,7 @@ module.exports.createNewCampground = async (req, res) => {
   })); //mapping the urls and filenames of the files that are uploaded when creating new campground. we obtained the information from req.files through multer
   campground.author = req.user._id;
   await campground.save();
-  console.log(campground);
+  //console.log(campground);
   req.flash("success", "Successfully created a new Campground!");
   res.redirect(`/campgrounds/${campground._id}`);
 };
